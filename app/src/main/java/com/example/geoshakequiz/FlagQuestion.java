@@ -9,9 +9,9 @@ public class FlagQuestion {
     @PrimaryKey(autoGenerate = true)
     public int id;
 
-    public String countryName;
+    public String countryName; // This is the correct answer
     public int imageResId;
-    public String option2;
-    public String option3;
-    public String option4;
+    public String wrong1;
+    public String wrong2;
+    public String wrong3;
 }

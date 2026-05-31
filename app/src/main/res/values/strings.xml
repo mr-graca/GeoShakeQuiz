@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">GeoShakeQuiz</string>
+    <string name="score_format">Score: %1$d</string>
+    <string name="lives_label">Lives: </string>
+    <string name="correct_toast">Correct!</string>
+    <string name="wrong_toast">Wrong! %1$d %2$s remaining.</string>
+    <string name="game_over_toast">Game Over! Final score: %1$d</string>
+    <string name="shake_prompt">Shake your phone to start!</string>
+    <string name="exit_button">Exit</string>
 </resources>

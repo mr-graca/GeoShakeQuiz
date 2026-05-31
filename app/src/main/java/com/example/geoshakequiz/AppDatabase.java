@@ -5,7 +5,7 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {GameResult.class, FlagQuestion.class}, version = 1)
+@Database(entities = {GameResult.class, FlagQuestion.class}, version = 2)
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract GameResultDao resultDao();
@@ -19,9 +19,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     context.getApplicationContext(),
                     AppDatabase.class,
                     "geoshake_db")
-                    // Allows schema migrations without requiring explicit Migration objects.
-                    // On a version bump, existing data is cleared rather than crashing.
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(true)
                     .build();
         }
         return instance;

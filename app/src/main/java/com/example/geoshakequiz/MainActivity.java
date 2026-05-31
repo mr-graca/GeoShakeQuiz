@@ -8,7 +8,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -24,17 +23,13 @@ import android.widget.Toast;
 
 import androidx.annotation.RequiresPermission;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
-
 
     private static final float SHAKE_THRESHOLD = 2.80f;
     private static final long SHAKE_COOLDOWN_MS = 1200L;
@@ -43,34 +38,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Sensor accelerometer;
     private Vibrator vibrator;
     private AppDatabase db;
-    private final Random random = new Random();
 
-    private ConstraintLayout rootLayout;
     private ImageView ivFlag;
     private LinearLayout optionsContainer;
     private TextView tvScore, tvLives, tvShakePrompt;
-    private Button[] btns = new Button[4];
-    private Button btnBack;
+    private final Button[] btns = new Button[4];
 
     private int score = 0;
     private int lives = 3;
     private long lastShakeTime;
     private String correctCountry;
     private boolean gameStarted = false;
-
-    static class Question {
-        final String country;
-        final int image;
-        final List<String> wrongs;
-
-        Question(String country, int image, String... wrongs) {
-            this.country = country;
-            this.image = image;
-            this.wrongs = Arrays.asList(wrongs);
-        }
-    }
-
-    private final List<Question> questionBank = new ArrayList<>();
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -79,14 +57,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         setContentView(R.layout.activity_main);
 
         db = AppDatabase.getInstance(this);
-        rootLayout       = findViewById(R.id.rootLayout);
         ivFlag           = findViewById(R.id.ivFlag);
         optionsContainer = findViewById(R.id.optionsContainer);
         tvScore          = findViewById(R.id.tvScore);
         tvLives          = findViewById(R.id.tvLives);
         tvShakePrompt    = findViewById(R.id.tvShakePrompt);
-        btnBack          = findViewById(R.id.btnBack);
-
+        
+        Button btnBack = findViewById(R.id.btnBack);
         btnBack.setOnClickListener(v -> finish());
 
         btns[0] = findViewById(R.id.btnOpt1);
@@ -98,30 +75,45 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         accelerometer  = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         vibrator       = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-        loadQuestionBank();
+        ensureDatabasePopulated();
     }
 
-    private void loadQuestionBank() {
-        questionBank.add(new Question("Angola",       R.drawable.flag_angola,     "Mozambique", "Portugal",     "Brazil"));
-        questionBank.add(new Question("Hungary",      R.drawable.flag_hungary,    "Italy",      "Bulgaria",     "Romania"));
-        questionBank.add(new Question("Portugal",     R.drawable.flag_portugal,   "Spain",      "France",       "Italy"));
-        questionBank.add(new Question("Cape Verde",   R.drawable.flag_caboverde,  "Angola",     "Senegal",      "Guinea"));
-        questionBank.add(new Question("Mozambique",   R.drawable.flag_mozambique, "Zimbabwe",   "South Africa", "Kenya"));
-        questionBank.add(new Question("Sao Tome and Principe",     R.drawable.flag_saotome,    "Gabon",      "Nigeria",      "Togo"));
-        questionBank.add(new Question("Nigeria",      R.drawable.flag_nigeria,    "Niger",      "Ghana",        "Cameroon"));
-        questionBank.add(new Question("Germany",      R.drawable.flag_germany,    "Belgium",    "Austria",      "Netherlands"));
-        questionBank.add(new Question("Russia",       R.drawable.flag_russia,     "Ukraine",    "Kazakhstan",   "Poland"));
-        questionBank.add(new Question("France",       R.drawable.flag_france,     "Belgium",    "Netherlands",  "Ireland"));
-        questionBank.add(new Question("Japan",        R.drawable.flag_japan,      "South Korea","Bangladesh",   "Singapore"));
-        questionBank.add(new Question("Italy",        R.drawable.flag_italy,      "France",     "Ireland",      "Mexico"));
-        questionBank.add(new Question("Sweden",       R.drawable.flag_sweden,     "Norway",     "Denmark",      "Finland"));
+    private void ensureDatabasePopulated() {
+        new Thread(() -> {
+            if (db.flagDao().getCount() == 0) {
+                List<FlagQuestion> initialFlags = new ArrayList<>();
+                initialFlags.add(createFlag("Angola", R.drawable.flag_angola, "Mozambique", "Portugal", "Brazil"));
+                initialFlags.add(createFlag("Hungary", R.drawable.flag_hungary, "Italy", "Bulgaria", "Romania"));
+                initialFlags.add(createFlag("Portugal", R.drawable.flag_portugal, "Spain", "France", "Italy"));
+                initialFlags.add(createFlag("Cape Verde", R.drawable.flag_caboverde, "Angola", "Senegal", "Guinea"));
+                initialFlags.add(createFlag("Mozambique", R.drawable.flag_mozambique, "Zimbabwe", "South Africa", "Kenya"));
+                initialFlags.add(createFlag("Sao Tome and Principe", R.drawable.flag_saotome, "Gabon", "Nigeria", "Togo"));
+                initialFlags.add(createFlag("Nigeria", R.drawable.flag_nigeria, "Niger", "Ghana", "Cameroon"));
+                initialFlags.add(createFlag("Germany", R.drawable.flag_germany, "Belgium", "Austria", "Netherlands"));
+                initialFlags.add(createFlag("Russia", R.drawable.flag_russia, "Ukraine", "Kazakhstan", "Poland"));
+                initialFlags.add(createFlag("France", R.drawable.flag_france, "Belgium", "Netherlands", "Ireland"));
+                initialFlags.add(createFlag("Japan", R.drawable.flag_japan, "South Korea", "Bangladesh", "Singapore"));
+                initialFlags.add(createFlag("Italy", R.drawable.flag_italy, "France", "Ireland", "Mexico"));
+                initialFlags.add(createFlag("Sweden", R.drawable.flag_sweden, "Norway", "Denmark", "Finland"));
+                db.flagDao().insertAll(initialFlags);
+            }
+        }).start();
+    }
+
+    private FlagQuestion createFlag(String name, int resId, String w1, String w2, String w3) {
+        FlagQuestion f = new FlagQuestion();
+        f.countryName = name;
+        f.imageResId = resId;
+        f.wrong1 = w1;
+        f.wrong2 = w2;
+        f.wrong3 = w3;
+        return f;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         if (accelerometer != null) {
-            // SENSOR_DELAY_GAME ensures near real-time accelerometer readings
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         }
     }
@@ -164,18 +156,27 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void nextQuestion() {
-        Question q = questionBank.get(random.nextInt(questionBank.size()));
-        correctCountry = q.country;
-        ivFlag.setImageResource(q.image);
+        new Thread(() -> {
+            FlagQuestion q = db.flagDao().getRandomQuestion();
+            if (q != null) {
+                runOnUiThread(() -> {
+                    correctCountry = q.countryName;
+                    ivFlag.setImageResource(q.imageResId);
 
-        List<String> options = new ArrayList<>(q.wrongs);
-        options.add(q.country);
-        Collections.shuffle(options);
+                    List<String> options = new ArrayList<>();
+                    options.add(q.countryName); // Correct answer
+                    options.add(q.wrong1);
+                    options.add(q.wrong2);
+                    options.add(q.wrong3);
+                    Collections.shuffle(options); // Shuffle here to randomize button positions
 
-        for (int i = 0; i < 4; i++) {
-            btns[i].setText(options.get(i));
-            btns[i].setOnClickListener(v -> checkAnswer(((Button) v).getText().toString()));
-        }
+                    for (int i = 0; i < 4; i++) {
+                        btns[i].setText(options.get(i));
+                        btns[i].setOnClickListener(v -> checkAnswer(((Button) v).getText().toString()));
+                    }
+                });
+            }
+        }).start();
     }
 
     @RequiresPermission(Manifest.permission.VIBRATE)
@@ -190,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             vibrate(400);
             if (lives <= 0) {
                 endGame();
-                return; // Do not update UI after game over
+                return;
             }
             String lifeWord = lives == 1 ? "life" : "lives";
             Toast.makeText(this, "Wrong! " + lives + " " + lifeWord + " remaining.", Toast.LENGTH_SHORT).show();
@@ -202,7 +203,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private void updateUI() {
         tvScore.setText("Score: " + score);
 
-        // Build the lives display using heart icons instead of emoji
         SpannableStringBuilder livesBuilder = new SpannableStringBuilder("Lives: ");
         int currentLives = Math.max(0, lives);
         for (int i = 0; i < currentLives; i++) {
@@ -210,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if (heartIcon != null) {
                 int sizePx = (int) tvLives.getTextSize();
                 heartIcon.setBounds(0, 0, sizePx, sizePx);
-                livesBuilder.append(" \u00A0"); // non-breaking space as placeholder
+                livesBuilder.append(" \u00A0");
                 livesBuilder.setSpan(
                     new ImageSpan(heartIcon, ImageSpan.ALIGN_BOTTOM),
                     livesBuilder.length() - 2,
@@ -231,7 +231,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             runOnUiThread(() -> {
                 Toast.makeText(this, "Game Over! Final score: " + score, Toast.LENGTH_LONG).show();
-                finish(); // Return to the start screen
+                finish();
             });
         }).start();
     }
@@ -239,11 +239,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @RequiresPermission(Manifest.permission.VIBRATE)
     private void vibrate(int durationMs) {
         if (vibrator == null || !vibrator.hasVibrator()) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE));
-        } else {
-            vibrator.vibrate(durationMs);
-        }
+        vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE));
     }
 
     @Override
