@@ -1,0 +1,29 @@
+package com.example.geoshakequiz;
+
+import android.content.Context;
+import androidx.room.Database;
+import androidx.room.Room;
+import androidx.room.RoomDatabase;
+
+@Database(entities = {GameResult.class, FlagQuestion.class}, version = 1)
+public abstract class AppDatabase extends RoomDatabase {
+
+    public abstract GameResultDao resultDao();
+    public abstract FlagDao flagDao();
+
+    private static AppDatabase instance;
+
+    public static synchronized AppDatabase getInstance(Context context) {
+        if (instance == null) {
+            instance = Room.databaseBuilder(
+                    context.getApplicationContext(),
+                    AppDatabase.class,
+                    "geoshake_db")
+                    // Allows schema migrations without requiring explicit Migration objects.
+                    // On a version bump, existing data is cleared rather than crashing.
+                    .fallbackToDestructiveMigration()
+                    .build();
+        }
+        return instance;
+    }
+}
